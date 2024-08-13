@@ -1,0 +1,437 @@
+<html><head><base href="https://prayerlog.example.com/">
+<title>Prayer Log</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path d='M50 10 C40 25, 30 40, 30 60 C30 80, 70 80, 70 60 C70 40, 60 25, 50 10' stroke='navy' stroke-width='8' fill='none'/></svg>" type="image/svg+xml">
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f0f8ff;
+    }
+    h1, h2 {
+        color: #4682b4;
+    }
+    .app-logo {
+        width: 100px;
+        height: 100px;
+        margin: 0 auto 20px;
+        display: block;
+    }
+    .prayer-form, .prayer-list, .answered-list, .share-section, .update-form {
+        background-color: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+    textarea, input[type="text"], input[type="date"] {
+        width: 100%;
+        padding: 8px;
+        margin-bottom: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    button {
+        background-color: #4682b4;
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-right: 5px;
+    }
+    button:hover {
+        background-color: #356a97;
+    }
+    .prayer-item, .answered-item {
+        background-color: #e6f2ff;
+        padding: 10px;
+        margin-bottom: 10px;
+        border-radius: 4px;
+    }
+    .filter-buttons {
+        margin-bottom: 10px;
+    }
+    .filter-buttons button {
+        margin-right: 5px;
+        margin-bottom: 5px;
+    }
+    .delete-btn {
+        background-color: #ff4136;
+    }
+    .delete-btn:hover {
+        background-color: #d63a30;
+    }
+    .share-btn {
+        background-color: #2ecc40;
+    }
+    .share-btn:hover {
+        background-color: #27ae60;
+    }
+    .sync-btn {
+        background-color: #0074d9;
+    }
+    .sync-btn:hover {
+        background-color: #0056a3;
+    }
+    .update-btn {
+        background-color: #ff851b;
+    }
+    .update-btn:hover {
+        background-color: #e67300;
+    }
+    .update-form {
+        display: none;
+    }
+</style>
+</head>
+<body>
+    <svg class="app-logo" viewBox="0 0 100 100">
+        <path d="M50 10 C40 25, 30 40, 30 60 C30 80, 70 80, 70 60 C70 40, 60 25, 50 10" stroke="navy" stroke-width="8" fill="none"/>
+    </svg>
+    
+    <h1>Prayer Log</h1>
+    
+    <div class="prayer-form">
+        <h2>Add New Prayer</h2>
+        <input type="text" id="prayerTitle" placeholder="Prayer Title">
+        <textarea id="prayerText" placeholder="Enter your prayer"></textarea>
+        <input type="text" id="category" placeholder="Category">
+        <textarea id="confirmation" placeholder="How would you like God to confirm your prayer has been answered?"></textarea>
+        <button onclick="addPrayer()">Add Prayer</button>
+    </div>
+
+    <div class="prayer-list">
+        <h2>Prayers</h2>
+        <div id="prayerFilterButtons" class="filter-buttons"></div>
+        <div id="prayerList"></div>
+    </div>
+
+    <div class="answered-list">
+        <h2>Answered Prayers</h2>
+        <div id="answeredFilterButtons" class="filter-buttons"></div>
+        <div id="answeredList"></div>
+    </div>
+
+    <div class="update-form" id="updateForm">
+        <h2>Update Prayer</h2>
+        <input type="text" id="updateTitle" placeholder="Prayer Title">
+        <textarea id="updateText" placeholder="Enter your prayer"></textarea>
+        <input type="text" id="updateCategory" placeholder="Category">
+        <textarea id="updateConfirmation" placeholder="How would you like God to confirm your prayer has been answered?"></textarea>
+        <button onclick="saveUpdatedPrayer()">Save Updated Prayer</button>
+        <button onclick="cancelUpdate()">Cancel</button>
+    </div>
+
+    <div class="share-section">
+        <h2>Share and Sync</h2>
+        <button class="share-btn" onclick="sharePrayers()">Share All Prayers</button>
+        <button class="sync-btn" onclick="syncPrayers()">Sync with Another Device</button>
+        <button onclick="importSyncedPrayers()">Import Synced Prayers</button>
+    </div>
+
+    <script>
+        let prayers = JSON.parse(localStorage.getItem('prayers')) || [];
+        let answeredPrayers = JSON.parse(localStorage.getItem('answeredPrayers')) || [];
+        let currentlyUpdating = null;
+
+        function savePrayers() {
+            localStorage.setItem('prayers', JSON.stringify(prayers));
+            localStorage.setItem('answeredPrayers', JSON.stringify(answeredPrayers));
+        }
+
+        function addPrayer() {
+            const prayerTitle = document.getElementById('prayerTitle').value;
+            const prayerText = document.getElementById('prayerText').value;
+            const category = document.getElementById('category').value;
+            const confirmation = document.getElementById('confirmation').value;
+            if (prayerTitle && prayerText && category) {
+                const prayer = {
+                    id: Date.now(),
+                    title: prayerTitle,
+                    text: prayerText,
+                    category: category,
+                    confirmation: confirmation,
+                    date: new Date().toISOString(),
+                    answered: false
+                };
+                prayers.push(prayer);
+                savePrayers();
+                renderPrayers();
+                document.getElementById('prayerTitle').value = '';
+                document.getElementById('prayerText').value = '';
+                document.getElementById('category').value = '';
+                document.getElementById('confirmation').value = '';
+            }
+        }
+
+        function deletePrayer(id, isAnswered = false) {
+            if (isAnswered) {
+                answeredPrayers = answeredPrayers.filter(prayer => prayer.id !== id);
+            } else {
+                prayers = prayers.filter(prayer => prayer.id !== id);
+            }
+            savePrayers();
+            renderPrayers();
+            renderAnsweredPrayers();
+        }
+
+        function markAsAnswered(id) {
+            const prayer = prayers.find(p => p.id === id);
+            if (prayer) {
+                prayer.answered = true;
+                prayer.answeredDate = new Date().toISOString();
+                answeredPrayers.push(prayer);
+                prayers = prayers.filter(p => p.id !== id);
+                savePrayers();
+                renderPrayers();
+                renderAnsweredPrayers();
+            }
+        }
+
+        function updateTestimony(id) {
+            const testimony = prompt("Enter your testimony:");
+            if (testimony) {
+                const prayer = answeredPrayers.find(p => p.id === id);
+                if (prayer) {
+                    prayer.testimony = testimony;
+                    savePrayers();
+                    renderAnsweredPrayers();
+                }
+            }
+        }
+
+        function calculateDuration(startDate, endDate) {
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            const durationMs = end - start;
+            const days = Math.floor(durationMs / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((durationMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
+            return `${days} days, ${hours} hours, ${minutes} minutes`;
+        }
+
+        function renderPrayers(category = 'all') {
+            const prayerList = document.getElementById('prayerList');
+            prayerList.innerHTML = '';
+            const filteredPrayers = category === 'all' ? prayers : prayers.filter(p => p.category === category);
+            filteredPrayers.forEach(prayer => {
+                const prayerElement = document.createElement('div');
+                prayerElement.className = 'prayer-item';
+                prayerElement.innerHTML = `
+                    <h3>${prayer.title}</h3>
+                    <p><strong>${prayer.category}</strong>: ${prayer.text}</p>
+                    <p>Date: ${new Date(prayer.date).toLocaleString()}</p>
+                    <p>Confirmation: ${prayer.confirmation || 'Not specified'}</p>
+                    <button onclick="markAsAnswered(${prayer.id})">Mark as Answered</button>
+                    <button class="delete-btn" onclick="deletePrayer(${prayer.id})">Delete</button>
+                    <button class="share-btn" onclick="shareSinglePrayer(${prayer.id})">Share</button>
+                    <button class="update-btn" onclick="showUpdateForm(${prayer.id})">Update</button>
+                `;
+                prayerList.appendChild(prayerElement);
+            });
+        }
+
+        function renderAnsweredPrayers(category = 'all') {
+            const answeredList = document.getElementById('answeredList');
+            answeredList.innerHTML = '';
+            const filteredPrayers = category === 'all' ? answeredPrayers : answeredPrayers.filter(p => p.category === category);
+            filteredPrayers.forEach(prayer => {
+                const prayerElement = document.createElement('div');
+                prayerElement.className = 'answered-item';
+                const duration = calculateDuration(prayer.date, prayer.answeredDate);
+                prayerElement.innerHTML = `
+                    <h3>${prayer.title}</h3>
+                    <p><strong>${prayer.category}</strong>: ${prayer.text}</p>
+                    <p>Date Prayed: ${new Date(prayer.date).toLocaleString()}</p>
+                    <p>Date Answered: ${new Date(prayer.answeredDate).toLocaleString()}</p>
+                    <p>Duration: ${duration}</p>
+                    <p>Confirmation: ${prayer.confirmation || 'Not specified'}</p>
+                    <p>Testimony: ${prayer.testimony || 'Not added yet'}</p>
+                    <button onclick="updateTestimony(${prayer.id})">Update Testimony</button>
+                    <button class="delete-btn" onclick="deletePrayer(${prayer.id}, true)">Delete</button>
+                    <button class="share-btn" onclick="shareSinglePrayer(${prayer.id}, true)">Share</button>
+                    <button class="update-btn" onclick="showUpdateForm(${prayer.id}, true)">Update</button>
+                `;
+                answeredList.appendChild(prayerElement);
+            });
+        }
+
+        function renderFilterButtons() {
+            const categories = [...new Set([...prayers, ...answeredPrayers].map(p => p.category))];
+            const prayerFilterButtons = document.getElementById('prayerFilterButtons');
+            const answeredFilterButtons = document.getElementById('answeredFilterButtons');
+            
+            prayerFilterButtons.innerHTML = '<button onclick="renderPrayers(\'all\')">All</button>';
+            answeredFilterButtons.innerHTML = '<button onclick="renderAnsweredPrayers(\'all\')">All</button>';
+            
+            categories.forEach(category => {
+                prayerFilterButtons.innerHTML += `<button onclick="renderPrayers('${category}')">${category}</button>`;
+                answeredFilterButtons.innerHTML += `<button onclick="renderAnsweredPrayers('${category}')">${category}</button>`;
+            });
+        }
+
+        function sharePrayers() {
+            const allPrayers = [...prayers, ...answeredPrayers];
+            const formattedPrayers = allPrayers.map(prayer => {
+                let prayerInfo = `Title: ${prayer.title}\nCategory: ${prayer.category}\nPrayer: ${prayer.text}\nDate: ${new Date(prayer.date).toLocaleString()}\nConfirmation: ${prayer.confirmation || 'Not specified'}\nAnswered: ${prayer.answered ? 'Yes' : 'No'}`;
+                if (prayer.answered) {
+                    const duration = calculateDuration(prayer.date, prayer.answeredDate);
+                    prayerInfo += `\nDate Answered: ${new Date(prayer.answeredDate).toLocaleString()}\nDuration: ${duration}\nTestimony: ${prayer.testimony || 'Not added yet'}`;
+                }
+                return prayerInfo + '\n\n';
+            }).join('');
+
+            navigator.clipboard.writeText(formattedPrayers).then(() => {
+                alert('All prayers have been copied to clipboard!');
+            }, (err) => {
+                console.error('Could not copy text: ', err);
+            });
+        }
+
+        function shareSinglePrayer(id, isAnswered = false) {
+            const prayer = isAnswered 
+                ? answeredPrayers.find(p => p.id === id)
+                : prayers.find(p => p.id === id);
+
+            if (prayer) {
+                let formattedPrayer = `Title: ${prayer.title}\nCategory: ${prayer.category}\nPrayer: ${prayer.text}\nDate: ${new Date(prayer.date).toLocaleString()}\nConfirmation: ${prayer.confirmation || 'Not specified'}\nAnswered: ${prayer.answered ? 'Yes' : 'No'}`;
+                if (prayer.answered) {
+                    const duration = calculateDuration(prayer.date, prayer.answeredDate);
+                    formattedPrayer += `\nDate Answered: ${new Date(prayer.answeredDate).toLocaleString()}\nDuration: ${duration}\nTestimony: ${prayer.testimony || 'Not added yet'}`;
+                }
+
+                navigator.clipboard.writeText(formattedPrayer).then(() => {
+                    alert('Prayer has been copied to clipboard!');
+                }, (err) => {
+                    console.error('Could not copy text: ', err);
+                });
+            }
+        }
+
+        function syncPrayers() {
+            const syncData = {
+                prayers: prayers,
+                answeredPrayers: answeredPrayers
+            };
+
+            const jsonData = JSON.stringify(syncData);
+            const blob = new Blob([jsonData], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'prayer_sync.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            alert('Prayer data prepared for sync. Please transfer the downloaded file to your other device and use the "Import Synced Prayers" function there.');
+        }
+
+        function importSyncedPrayers() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'application/json';
+            input.onchange = function(event) {
+                const file = event.target.files[0];
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const syncedData = JSON.parse(e.target.result);
+                        mergePrayers(syncedData.prayers, syncedData.answeredPrayers);
+                        savePrayers();
+                        renderPrayers();
+                        renderAnsweredPrayers();
+                        renderFilterButtons();
+                        alert('Prayers synced successfully!');
+                    } catch (error) {
+                        console.error('Error parsing synced data:', error);
+                        alert('Error syncing prayers. Please try again.');
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        }
+
+        function mergePrayers(syncedPrayers, syncedAnsweredPrayers) {
+            // Merge regular prayers
+            syncedPrayers.forEach(syncedPrayer => {
+                const existingPrayer = prayers.find(p => p.id === syncedPrayer.id);
+                if (!existingPrayer) {
+                    prayers.push(syncedPrayer);
+                } else {
+                    Object.assign(existingPrayer, syncedPrayer);
+                }
+            });
+
+            // Merge answered prayers
+            syncedAnsweredPrayers.forEach(syncedPrayer => {
+                const existingPrayer = answeredPrayers.find(p => p.id === syncedPrayer.id);
+                if (!existingPrayer) {
+                    answeredPrayers.push(syncedPrayer);
+                } else {
+                    Object.assign(existingPrayer, syncedPrayer);
+                }
+            });
+        }
+
+        function showUpdateForm(id, isAnswered = false) {
+            const prayer = isAnswered 
+                ? answeredPrayers.find(p => p.id === id)
+                : prayers.find(p => p.id === id);
+
+            if (prayer) {
+                currentlyUpdating = { id, isAnswered };
+                document.getElementById('updateTitle').value = prayer.title;
+                document.getElementById('updateText').value = prayer.text;
+                document.getElementById('updateCategory').value = prayer.category;
+                document.getElementById('updateConfirmation').value = prayer.confirmation || '';
+                document.getElementById('updateForm').style.display = 'block';
+            }
+        }
+
+        function saveUpdatedPrayer() {
+            if (currentlyUpdating) {
+                const updatedPrayer = {
+                    title: document.getElementById('updateTitle').value,
+                    text: document.getElementById('updateText').value,
+                    category: document.getElementById('updateCategory').value,
+                    confirmation: document.getElementById('updateConfirmation').value
+                };
+
+                if (currentlyUpdating.isAnswered) {
+                    const index = answeredPrayers.findIndex(p => p.id === currentlyUpdating.id);
+                    if (index !== -1) {
+                        answeredPrayers[index] = { ...answeredPrayers[index], ...updatedPrayer };
+                    }
+                } else {
+                    const index = prayers.findIndex(p => p.id === currentlyUpdating.id);
+                    if (index !== -1) {
+                        prayers[index] = { ...prayers[index], ...updatedPrayer };
+                    }
+                }
+
+                savePrayers();
+                renderPrayers();
+                renderAnsweredPrayers();
+                cancelUpdate();
+            }
+        }
+
+        function cancelUpdate() {
+            currentlyUpdating = null;
+            document.getElementById('updateForm').style.display = 'none';
+        }
+
+        renderPrayers();
+        renderAnsweredPrayers();
+        renderFilterButtons();
+    </script>
+</body>
+</html>
