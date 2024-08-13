@@ -4,7 +4,7 @@
   "description": "A simple and private prayer journal that is saved to only local storage of the device that is being used and the ability to transfer and sync from device to device",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "generate-pwa-assets": "pwa-assets-generator --preset minimal-2023 public/logo.png"
   },
   "repository": {
     "type": "git",
@@ -16,5 +16,10 @@
     "prayer"
   ],
   "author": "Lee Charles Laing <lcharleslaing@gmail.com>",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "@vite-pwa/assets-generator": "^0.2.4",
+    "vite": "^5.4.0",
+    "vite-plugin-pwa": "^0.20.1"
+  }
 }
