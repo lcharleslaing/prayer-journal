@@ -259,7 +259,7 @@
   <h3>🙏${prayer.title}🙏</h3>
   <p><strong>${prayer.category}</strong>: ${prayer.text}</p>
   <p>Date: ${new Date(prayer.date).toLocaleString()}</p>
-  <p>Confirmation: ${prayer.confirmation || 'Not specified'}</p>
+  ${prayer.answered ? `<p>Confirmation: ${prayer.confirmation || 'Not specified'}</p>` : ''}
   <button onclick="markAsAnswered(${prayer.id})">Mark as Answered</button>
   <button class="delete-btn" onclick="deletePrayer(${prayer.id})">Delete</button>
   <button class="share-btn" onclick="shareSinglePrayer(${prayer.id})">Share</button>
@@ -317,7 +317,6 @@
 # 🙏${prayer.title}🙏
 ## Category: ${prayer.category}
 **Prayer:** ${prayer.text}
-**Confirmation:** ${prayer.confirmation || 'Not specified'}
           `;
         } else {
           const duration = calculateDuration(prayer.date, prayer.answeredDate);
@@ -354,12 +353,11 @@
 # 🙏${prayer.title}🙏
 ## Category: ${prayer.category}
 **Prayer:** ${prayer.text}
-**Confirmation:** ${prayer.confirmation || 'Not specified'}
           `;
         } else {
           const duration = calculateDuration(prayer.date, prayer.answeredDate);
           formattedPrayer = `
-# # 🙏${prayer.title}🙏
+# 🙏${prayer.title}🙏
 ## Category: ${prayer.category}
 **Prayer:** ${prayer.text}
 **Date:** ${new Date(prayer.date).toLocaleString()}
@@ -394,7 +392,7 @@
             answeredPrayers[index] = { ...answeredPrayers[index], ...updatedPrayer };
             const duration = calculateDuration(answeredPrayers[index].date, answeredPrayers[index].answeredDate);
             formattedPrayer = `
-# ${answeredPrayers[index].title}
+# 🙏${answeredPrayers[index].title}🙏
 ## Category: ${answeredPrayers[index].category}
 **Prayer:** ${answeredPrayers[index].text}
 **Date:** ${new Date(answeredPrayers[index].date).toLocaleString()}
@@ -409,10 +407,9 @@
           if (index !== -1) {
             prayers[index] = { ...prayers[index], ...updatedPrayer };
             formattedPrayer = `
-# ${prayers[index].title}
+# 🙏${prayers[index].title}🙏
 ## Category: ${prayers[index].category}
 **Prayer:** ${prayers[index].text}
-**Confirmation:** ${prayers[index].confirmation || 'Not specified'}
             `;
           }
         }
@@ -459,13 +456,12 @@
 # 🙏${prayer.title}🙏
 ## Category: ${prayer.category}
 **Prayer:** ${prayer.text}
-**Confirmation:** ${prayer.confirmation || 'Not specified'}
         `;
       } else {
         const duration = calculateDuration(prayer.date, prayer.answeredDate);
         formattedPrayer = `
 # 🙏${prayer.title}🙏
-**Category:** ${prayer.category}
+## Category: ${prayer.category}
 **Prayer:** ${prayer.text}
 **Date:** ${new Date(prayer.date).toLocaleString()}
 **Confirmation:** ${prayer.confirmation || 'Not specified'}
