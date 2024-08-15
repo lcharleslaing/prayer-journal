@@ -1,4 +1,5 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 
 <head>
   <meta charset="UTF-8">
@@ -166,7 +167,6 @@
   </div>
 
   <script>
-
     let prayers = JSON.parse(localStorage.getItem('prayers')) || [];
     let answeredPrayers = JSON.parse(localStorage.getItem('answeredPrayers')) || [];
     let currentlyUpdating = null;
@@ -233,6 +233,7 @@
           prayer.testimony = testimony;
           savePrayers();
           renderAnsweredPrayers();
+          copyPrayerToClipboard(prayer);
         }
       }
     }
@@ -255,7 +256,7 @@
         const prayerElement = document.createElement('div');
         prayerElement.className = 'prayer-item';
         prayerElement.innerHTML = `
-  <h3>${prayer.title}</h3>
+  <h3>🙏${prayer.title}🙏</h3>
   <p><strong>${prayer.category}</strong>: ${prayer.text}</p>
   <p>Date: ${new Date(prayer.date).toLocaleString()}</p>
   <p>Confirmation: ${prayer.confirmation || 'Not specified'}</p>
@@ -277,7 +278,7 @@
         prayerElement.className = 'answered-item';
         const duration = calculateDuration(prayer.date, prayer.answeredDate);
         prayerElement.innerHTML = `
-  <h3>${prayer.title}</h3>
+  <h3>🙏${prayer.title}🙏</h3>
   <p><strong>${prayer.category}</strong>: ${prayer.text}</p>
   <p>Date Prayed: ${new Date(prayer.date).toLocaleString()}</p>
   <p>Date Answered: ${new Date(prayer.answeredDate).toLocaleString()}</p>
@@ -310,13 +311,29 @@
     function sharePrayers() {
       const allPrayers = [...prayers, ...answeredPrayers];
       const formattedPrayers = allPrayers.map(prayer => {
-        let prayerInfo = `Title: ${prayer.title}\nCategory: ${prayer.category}\nPrayer: ${prayer.text}\nDate: ${new Date(prayer.date).toLocaleString()}\nConfirmation: ${prayer.confirmation || 'Not specified'}\nAnswered: ${prayer.answered ? 'Yes' : 'No'}`;
-        if (prayer.answered) {
+        let prayerInfo;
+        if (!prayer.answered) {
+          prayerInfo = `
+# 🙏${prayer.title}🙏
+## Category: ${prayer.category}
+**Prayer:** ${prayer.text}
+**Confirmation:** ${prayer.confirmation || 'Not specified'}
+          `;
+        } else {
           const duration = calculateDuration(prayer.date, prayer.answeredDate);
-          prayerInfo += `\nDate Answered: ${new Date(prayer.answeredDate).toLocaleString()}\nDuration: ${duration}\nTestimony: ${prayer.testimony || 'Not added yet'}`;
+          prayerInfo = `
+# 🙏${prayer.title}🙏
+## Category: ${prayer.category}
+**Prayer:** ${prayer.text}
+**Date:** ${new Date(prayer.date).toLocaleString()}
+**Confirmation:** ${prayer.confirmation || 'Not specified'}
+**Date Answered:** ${new Date(prayer.answeredDate).toLocaleString()}
+**Duration:** ${duration}
+**Testimony:** ${prayer.testimony || 'Not added yet'}
+          `;
         }
-        return prayerInfo + '\n\n';
-      }).join('');
+        return prayerInfo.trim();
+      }).join('\n\n');
 
       navigator.clipboard.writeText(formattedPrayers).then(() => {
         alert('All prayers have been copied to clipboard!');
@@ -331,13 +348,29 @@
         : prayers.find(p => p.id === id);
 
       if (prayer) {
-        let formattedPrayer = `Title: ${prayer.title}\nCategory: ${prayer.category}\nPrayer: ${prayer.text}\nDate: ${new Date(prayer.date).toLocaleString()}\nConfirmation: ${prayer.confirmation || 'Not specified'}\nAnswered: ${prayer.answered ? 'Yes' : 'No'}`;
-        if (prayer.answered) {
+        let formattedPrayer;
+        if (!prayer.answered) {
+          formattedPrayer = `
+# 🙏${prayer.title}🙏
+## Category: ${prayer.category}
+**Prayer:** ${prayer.text}
+**Confirmation:** ${prayer.confirmation || 'Not specified'}
+          `;
+        } else {
           const duration = calculateDuration(prayer.date, prayer.answeredDate);
-          formattedPrayer += `\nDate Answered: ${new Date(prayer.answeredDate).toLocaleString()}\nDuration: ${duration}\nTestimony: ${prayer.testimony || 'Not added yet'}`;
+          formattedPrayer = `
+# # 🙏${prayer.title}🙏
+## Category: ${prayer.category}
+**Prayer:** ${prayer.text}
+**Date:** ${new Date(prayer.date).toLocaleString()}
+**Confirmation:** ${prayer.confirmation || 'Not specified'}
+**Date Answered:** ${new Date(prayer.answeredDate).toLocaleString()}
+**Duration:** ${duration}
+**Testimony:** ${prayer.testimony || 'Not added yet'}
+          `;
         }
 
-        navigator.clipboard.writeText(formattedPrayer).then(() => {
+        navigator.clipboard.writeText(formattedPrayer.trim()).then(() => {
           alert('Prayer has been copied to clipboard!');
         }, (err) => {
           console.error('Could not copy text: ', err);
@@ -345,73 +378,63 @@
       }
     }
 
-    function syncPrayers() {
-      const syncData = {
-        prayers: prayers,
-        answeredPrayers: answeredPrayers
-      };
-
-      const jsonData = JSON.stringify(syncData);
-      const blob = new Blob([jsonData], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'prayer_sync.json';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      alert('Prayer data prepared for sync. Please transfer the downloaded file to your other device and use the "Import Synced Prayers" function there.');
-    }
-
-    function importSyncedPrayers() {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'application/json';
-      input.onchange = function (event) {
-        const file = event.target.files[0];
-        const reader = new FileReader();
-        reader.onload = function (e) {
-          try {
-            const syncedData = JSON.parse(e.target.result);
-            mergePrayers(syncedData.prayers, syncedData.answeredPrayers);
-            savePrayers();
-            renderPrayers();
-            renderAnsweredPrayers();
-            renderFilterButtons();
-            alert('Prayers synced successfully!');
-          } catch (error) {
-            console.error('Error parsing synced data:', error);
-            alert('Error syncing prayers. Please try again.');
-          }
+    function saveUpdatedPrayer() {
+      if (currentlyUpdating) {
+        const updatedPrayer = {
+          title: document.getElementById('updateTitle').value,
+          text: document.getElementById('updateText').value,
+          category: document.getElementById('updateCategory').value,
+          confirmation: document.getElementById('updateConfirmation').value
         };
-        reader.readAsText(file);
-      };
-      input.click();
+
+        let formattedPrayer;
+        if (currentlyUpdating.isAnswered) {
+          const index = answeredPrayers.findIndex(p => p.id === currentlyUpdating.id);
+          if (index !== -1) {
+            answeredPrayers[index] = { ...answeredPrayers[index], ...updatedPrayer };
+            const duration = calculateDuration(answeredPrayers[index].date, answeredPrayers[index].answeredDate);
+            formattedPrayer = `
+# ${answeredPrayers[index].title}
+## Category: ${answeredPrayers[index].category}
+**Prayer:** ${answeredPrayers[index].text}
+**Date:** ${new Date(answeredPrayers[index].date).toLocaleString()}
+**Confirmation:** ${answeredPrayers[index].confirmation || 'Not specified'}
+**Date Answered:** ${new Date(answeredPrayers[index].answeredDate).toLocaleString()}
+**Duration:** ${duration}
+**Testimony:** ${answeredPrayers[index].testimony || 'Not added yet'}
+            `;
+          }
+        } else {
+          const index = prayers.findIndex(p => p.id === currentlyUpdating.id);
+          if (index !== -1) {
+            prayers[index] = { ...prayers[index], ...updatedPrayer };
+            formattedPrayer = `
+# ${prayers[index].title}
+## Category: ${prayers[index].category}
+**Prayer:** ${prayers[index].text}
+**Confirmation:** ${prayers[index].confirmation || 'Not specified'}
+            `;
+          }
+        }
+
+        savePrayers();
+        renderPrayers();
+        renderAnsweredPrayers();
+        cancelUpdate();
+
+        if (formattedPrayer) {
+          navigator.clipboard.writeText(formattedPrayer.trim()).then(() => {
+            alert('Updated prayer has been copied to clipboard!');
+          }, (err) => {
+            console.error('Could not copy text: ', err);
+          });
+        }
+      }
     }
 
-    function mergePrayers(syncedPrayers, syncedAnsweredPrayers) {
-      // Merge regular prayers
-      syncedPrayers.forEach(syncedPrayer => {
-        const existingPrayer = prayers.find(p => p.id === syncedPrayer.id);
-        if (!existingPrayer) {
-          prayers.push(syncedPrayer);
-        } else {
-          Object.assign(existingPrayer, syncedPrayer);
-        }
-      });
-
-      // Merge answered prayers
-      syncedAnsweredPrayers.forEach(syncedPrayer => {
-        const existingPrayer = answeredPrayers.find(p => p.id === syncedPrayer.id);
-        if (!existingPrayer) {
-          answeredPrayers.push(syncedPrayer);
-        } else {
-          Object.assign(existingPrayer, syncedPrayer);
-        }
-      });
+    function cancelUpdate() {
+      currentlyUpdating = null;
+      document.getElementById('updateForm').style.display = 'none';
     }
 
     function showUpdateForm(id, isAnswered = false) {
@@ -429,37 +452,34 @@
       }
     }
 
-    function saveUpdatedPrayer() {
-      if (currentlyUpdating) {
-        const updatedPrayer = {
-          title: document.getElementById('updateTitle').value,
-          text: document.getElementById('updateText').value,
-          category: document.getElementById('updateCategory').value,
-          confirmation: document.getElementById('updateConfirmation').value
-        };
-
-        if (currentlyUpdating.isAnswered) {
-          const index = answeredPrayers.findIndex(p => p.id === currentlyUpdating.id);
-          if (index !== -1) {
-            answeredPrayers[index] = { ...answeredPrayers[index], ...updatedPrayer };
-          }
-        } else {
-          const index = prayers.findIndex(p => p.id === currentlyUpdating.id);
-          if (index !== -1) {
-            prayers[index] = { ...prayers[index], ...updatedPrayer };
-          }
-        }
-
-        savePrayers();
-        renderPrayers();
-        renderAnsweredPrayers();
-        cancelUpdate();
+    function copyPrayerToClipboard(prayer) {
+      let formattedPrayer;
+      if (!prayer.answered) {
+        formattedPrayer = `
+# 🙏${prayer.title}🙏
+## Category: ${prayer.category}
+**Prayer:** ${prayer.text}
+**Confirmation:** ${prayer.confirmation || 'Not specified'}
+        `;
+      } else {
+        const duration = calculateDuration(prayer.date, prayer.answeredDate);
+        formattedPrayer = `
+# 🙏${prayer.title}🙏
+**Category:** ${prayer.category}
+**Prayer:** ${prayer.text}
+**Date:** ${new Date(prayer.date).toLocaleString()}
+**Confirmation:** ${prayer.confirmation || 'Not specified'}
+**Date Answered:** ${new Date(prayer.answeredDate).toLocaleString()}
+**Duration:** ${duration}
+**Testimony:** ${prayer.testimony || 'Not added yet'}
+        `;
       }
-    }
 
-    function cancelUpdate() {
-      currentlyUpdating = null;
-      document.getElementById('updateForm').style.display = 'none';
+      navigator.clipboard.writeText(formattedPrayer.trim()).then(() => {
+        alert('Prayer has been copied to clipboard!');
+      }, (err) => {
+        console.error('Could not copy text: ', err);
+      });
     }
 
     renderPrayers();
